@@ -1,0 +1,649 @@
+' PROGRAM:    Full-Size RC User 2003  (1 Joystick Drive)
+' Written by: Innovation First, Inc.
+' Date:       2002 Nov 26
+'
+' Define BS2-SX Project Files
+'
+' {$STAMP BS2SX}
+' {$PBASIC 2.5}
+
+
+'=============================================================================================================
+'========== DECLARE VARIABLES ================================================================================
+'=============================================================================================================
+'  Below is a list of declared input and output variables.  Comment or un-comment
+'  the variables as needed.  Declare any additional variables required in
+'  your main program loop.  Note that you may only use 26 total variables.
+
+
+'---------- Operator Interface (OI) - Analog Inputs ----------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+p1_x       VAR Byte   'Port 1, X-axis on Joystick
+Oi_drive_x    VAR p1_x
+
+p1_y       VAR Byte   'Port 1, Y-axis on Joystick
+Oi_drive_y    VAR p1_y
+
+p1_wheel   VAR Byte   'Port 1, Wheel on Joystick
+p1_aux     VAR Byte   'Port 1, Aux on Joystick
+
+
+
+'---------- Operator Interface - Digital Inputs --------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+oi_swA      VAR Byte   'OI Digital Switch Inputs 1 thru 8
+oi_swB      VAR Byte   'OI Digital Switch Inputs 9 thru 16
+
+
+'---------- Robot Controller (RC) - Analog Inputs ------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'sensor1   VAR byte   'RC Analog Input 1, connector pin 2
+'sensor2   VAR byte   'RC Analog Input 2, connector pin 16
+'sensor3   VAR byte   'RC Analog Input 3, connector pin 5
+'sensor4   VAR byte   'RC Analog Input 4, connector pin 19
+'sensor5   VAR byte   'RC Analog Input 5, connector pin 8
+'sensor6   VAR byte   'RC Analog Input 6, connector pin 22
+'sensor7   VAR byte   'RC Analog Input 7, connector pin 11
+'bat_volt   VAR byte   'RC Analog Input 8, hardwired to the Battery
+            'Vin = ((4.7/14.7)* Battery voltage)-0.4
+            'Binary Battery Voltage = (Vin/5.0 V)*255
+
+
+'---------- Robot Controller - Digital Inputs ----------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+rc_swA      VAR Byte   'RC Digital Inputs 1 thru 8
+rc_swB      VAR Byte   'RC Digital Inputs 9 thru 16
+
+
+'---------- Robot Controller - Digital Outputs ---------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+relayA      VAR Byte
+relayB      VAR Byte
+
+
+'---------- Misc. --------------------------------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+packet_num   VAR Byte
+'delta_t   VAR byte
+PB_mode      VAR Byte
+drive_R      VAR Byte   'Drive Right
+drive_L      VAR Byte   'Drive Left
+tmp1         VAR Byte
+tmp2         VAR Byte
+tmp3         VAR Byte
+shifter_pos  VAR Bit
+display_mode VAR Nib
+
+'=============================================================================================================
+'========== DEFINE ALIASES ===================================================================================
+'=============================================================================================================
+'  Aliases are variables which are sub-divisions of variables defined
+'  above.  Aliases don't require any additional RAM.
+
+
+'---------- Aliases for each OI switch input -----------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'  Below are aliases for the digital inputs located on the Operator Interface.
+'  Ports 1 & 3 have their inputs duplicated in ports 4 & 2 respectively.  The
+'  inputs from ports 1 & 3 may be disabled via the 'Disable' dip switch
+'  located on the Operator Interface.  See Users Manual for details.
+
+p1_sw_trig   VAR oi_swA.BIT0   'Joystick Trigger Button, same as Port4 pin5
+Oi_sw_turbo  VAR p1_sw_trig
+p1_sw_top   VAR oi_swA.BIT1   'Joystick Top Button,     same as Port4 pin8
+Oi_sw_shifter VAR p1_sw_top
+Oi_sw_shifter_prev VAR Bit
+p1_sw_aux1   VAR oi_swA.BIT2   'Aux input,               same as Port4 pin9
+Oi_sw_run_pump VAR p1_sw_aux1
+p1_sw_aux2   VAR oi_swA.BIT3   'Aux input,               same as Port4 pin15
+
+p3_sw_trig   VAR oi_swA.BIT4   'Joystick Trigger Button, same as Port2 pin5
+p3_sw_top   VAR oi_swA.BIT5   'Joystick Top Button,     same as Port2 pin8
+p3_sw_aux1   VAR oi_swA.BIT6   'Aux input,               same as Port2 pin9
+p3_sw_aux2   VAR oi_swA.BIT7   'Aux input,               same as Port2 pin15
+
+p2_sw_trig   VAR oi_swB.BIT0   'Joystick Trigger Button
+p2_sw_top   VAR oi_swB.BIT1   'Joystick Top Button
+p2_sw_aux1   VAR oi_swB.BIT2   'Aux input
+p2_sw_aux2   VAR oi_swB.BIT3   'Aux input
+
+p4_sw_trig   VAR oi_swB.BIT4   'Joystick Trigger Button
+p4_sw_top   VAR oi_swB.BIT5   'Joystick Top Button
+p4_sw_aux1   VAR oi_swB.BIT6   'Aux input
+p4_sw_aux2   VAR oi_swB.BIT7   'Aux input
+
+
+'---------- Aliases for each RC switch input -----------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'  Below are aliases for the digital inputs located on the Robot Controller.
+
+rc_sw1      VAR rc_swA.BIT0
+rc_sw2      VAR rc_swA.BIT1
+rc_sw3      VAR rc_swA.BIT2
+rc_sw4      VAR rc_swA.BIT3
+rc_sw5      VAR rc_swA.BIT4
+rc_sw6      VAR rc_swA.BIT5
+rc_sw7      VAR rc_swA.BIT6
+rc_sw8      VAR rc_swA.BIT7
+rc_sw9      VAR rc_swB.BIT0
+rc_sw10      VAR rc_swB.BIT1
+Dig_in_pressure VAR rc_sw10
+rc_sw11      VAR rc_swB.BIT2
+rc_sw12      VAR rc_swB.BIT3
+rc_sw13      VAR rc_swB.BIT4
+rc_sw14      VAR rc_swB.BIT5
+rc_sw15      VAR rc_swB.BIT6
+rc_sw16      VAR rc_swB.BIT7
+
+
+'---------- Aliases for each RC Relay outputs ----------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'  Below are aliases for the relay outputs located on the Robot Controller.
+
+relay1_fwd   VAR RelayA.BIT0
+Rc_relay_shifter_left VAR relay1_fwd
+relay1_rev   VAR RelayA.BIT1
+Rc_relay_shifter_right VAR relay1_rev
+relay2_fwd   VAR RelayA.BIT2
+relay2_rev   VAR RelayA.BIT3
+relay3_fwd   VAR RelayA.BIT4
+relay3_rev   VAR RelayA.BIT5
+relay4_fwd   VAR RelayA.BIT6
+relay4_rev   VAR RelayA.BIT7
+
+relay5_fwd   VAR RelayB.BIT0
+relay5_rev   VAR RelayB.BIT1
+relay6_fwd   VAR RelayB.BIT2
+Rc_relay_pump VAR relay6_fwd
+relay6_rev   VAR RelayB.BIT3
+relay7_fwd   VAR RelayB.BIT4
+relay7_rev   VAR RelayB.BIT5
+relay8_fwd   VAR RelayB.BIT6
+relay8_rev   VAR RelayB.BIT7
+
+
+'---------- Aliases for the Pbasic Mode Byte (PB_mode) -------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'  Bit 7 of the PB_mode byte (aliased as comp_mode below) indicates the status
+'  of the Competition Control, either Enabled or Disabled.  This indicates the
+'  starting and stopping of rounds at the competitions.
+'  Comp_mode is indicated by a solid "Disabled" LED on the Operator Interface.
+'  Comp_mode = 1 for Enabled, 0 for Disabled.
+'
+'  Bit 6 of the PB_mode byte (aliased as auton_mode below) indicates the status
+'  of the Autonomous Mode, either Autonomous or Normal.  This indicates when
+'  the robot must run on its own programming.  When in Autonomous Mode, all
+'  OI analog inputs are set to 127 and all OI switch inputs are set to 0 (zero).
+'  Auton_mode is indicated by a blinking "Disabled" LED on the Operator Interface.
+'  Auton_mode = 1 for Autonomous, 0 for Normal.
+'
+'  Autonomous Mode can be turned ON by setting the RC to Team 0 (zero).
+'
+'  Bit 5 of the PB_mode byte (aliased as user_display_mode below) indicates when
+'  the user selects the "User Mode" on the OI.  PB_mode.bit5 is set to 1 in "User Mode".
+'  When the user selects channel, team number, or voltage, PB_mode.bit5 is set to 0
+'  When in "User Mode", the eight Robot Feedback LED are turned OFF.
+'  Note: "User Mode" is identified by the letter u in the left digit (for 4 digit OI's)
+'  Note: "User Mode" is identified by decimal places on the right two digits (for 3 digit OI's)
+
+comp_mode      VAR PB_mode.BIT7
+auton_mode      VAR PB_mode.BIT6
+user_display_mode   VAR PB_mode.BIT5
+
+
+'=============================================================================================================
+'========= DEFINE CONSTANTS FOR INITIALIZATION ===============================================================
+'=============================================================================================================
+'  The initialization code is used to select the input data used by PBASIC.
+'  The Master micro-processor (uP) sends the data you select to the BS2SX
+'  PBASIC uP.  You may select up to 26 constants, corresponding
+'  to 26 variables, from the 32 available to you.  Make sure that you have
+'  variables for all the bytes recieved in the serin command.
+'
+'  The constants below have a "c_" prefix, as compared to the variables that
+'  they will represent.
+'
+'  Set the Constants below to 1 for each data byte you want to recieve.
+'  Set the Constants below to 0 for the unneeded data bytes.
+
+
+'---------- Set the Initialization constants you want to read ------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+c_p1_y            CON   1
+c_p2_y            CON   0
+c_p3_y            CON   0
+c_p4_y            CON   0
+
+c_p1_x            CON   1
+c_p2_x            CON   0
+c_p3_x            CON   0
+c_p4_x            CON   0
+
+c_p1_wheel         CON   1
+c_p2_wheel         CON   0
+c_p3_wheel         CON   0
+c_p4_wheel         CON   0
+
+c_p1_aux         CON   1
+c_p2_aux         CON   0
+c_p3_aux         CON   0
+c_p4_aux         CON   0
+
+c_oi_swA         CON   1
+c_oi_swB         CON   1
+
+c_sensor1         CON   0
+c_sensor2         CON   0
+c_sensor3         CON   0
+c_sensor4         CON   0
+c_sensor5         CON   0
+c_sensor6         CON   0
+c_sensor7         CON   0
+c_batt_volt         CON   0
+
+c_rc_swA         CON   1
+c_rc_swB         CON   1
+
+c_delta_t         CON   0
+c_PB_mode         CON   1
+c_packet_num         CON   1
+c_res01            CON   0
+
+'---------- Initialization Constant VOLTAGE - USER DEFINED ---------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'  This is the 'Low Battery' detect voltage.  The 'Low Battery' LED will
+'  blink when the voltage drops below this value.
+'  Basically, the value = ((DESIRED FLASH VOLTAGE * 16.46) - 8.35)
+'  Example, for a 6.5 Volt Flash trigger, set value = 99.
+
+dataInitVolt         CON    140
+
+
+'=============================================================================================================
+'========== DEFINE CONSTANTS (DO NOT CHANGE) =================================================================
+'=============================================================================================================
+' Baud rate for communications with User CPU
+OUTBAUD            CON    20   '(62500, 8N1, Noninverted)
+INBAUD            CON    20   '(62500, 8N1, Noninverted)
+
+USERCPU            CON    4
+FPIN            CON    1
+COMA            CON    1
+COMB            CON    2
+COMC            CON    3
+
+
+
+' Constants for Scratchpad RAM
+s_left_drive_cur     CON 50
+s_right_drive_cur    CON 51
+
+
+' general constants
+CALIBRATE_ZONE     CON  70
+DISPLAY_NONE       CON  0
+DISPLAY_DRIVE_X    CON  1
+DISPLAY_DRIVE_Y    CON  2
+
+DRIVE_ACCEL_RATE   CON  35
+DRIVE_DEADZONE     CON  5
+DRIVE_SCL_65       CON  65  'turbo drive speed reduction (percent) [e.g. 50]
+DRIVE_CON_65       CON  45  '128 * (1- reduction percent) [e.g. 64]
+SHIFT_SWITCH_LOW   CON  1
+SHIFT_SWITCH_HIGH  CON  0
+SHIFTER_LOW        CON  1
+SHIFTER_HIGH       CON  0
+
+
+
+'=============================================================================================================
+'========== MAIN PROGRAM =====================================================================================
+'=============================================================================================================
+
+'---------- Input & Output Declarations ----------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+OUTPUT      COMB
+INPUT      COMA
+INPUT      COMC
+
+OUTPUT      7   'define Basic Run LED on RC => out7
+
+OUTPUT         8   'define Robot Feedback LED => out8  => PWM1 Green
+OUTPUT         9   'define Robot Feedback LED => out9  => PWM1 Red
+OUTPUT         10   'define Robot Feedback LED => out10 => PWM2 Green
+OUTPUT         11   'define Robot Feedback LED => out11 => PWM2 Red
+OUTPUT         12   'define Robot Feedback LED => out12 => Relay1 Red
+OUTPUT         13   'define Robot Feedback LED => out13 => Relay1 Green
+OUTPUT         14   'define Robot Feedback LED => out14 => Relay2 Red
+OUTPUT         15   'define Robot Feedback LED => out15 => Relay2 Green
+
+
+'---------- Initialize Inputs & Outputs ----------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+OUT7  = 1      'Basic Run LED on RC
+OUT8  = 0      'PWM1 LED - Green
+OUT9  = 0      'PWM1 LED - Red
+OUT10 = 0      'PWM2 LED - Green
+OUT11 = 0      'PWM2 LED - Red
+OUT12 = 0      'Relay1 LED - Red
+OUT13 = 0      'Relay1 LED - Green
+OUT14 = 0      'Relay2 LED - Red
+OUT15 = 0      'Relay2 LED - Green
+
+
+'=============================================================================================================
+'========== PBASIC - MASTER uP INITIALIZATION ROUTINE ========================================================
+'=============================================================================================================
+'  DO NOT CHANGE THIS!  DO NOT MOVE THIS!
+'  The init routine sends 5 bytes to the Master uP, defining which data bytes to receive.
+'  1)  Collect init.
+'  2)  Lower the COMA line, which is the clk line for the shift out command.
+'  3)  Lower COMB line to tell pic that we are ready to send init data.
+'  4)  Wait for pic to lower the COMC line, signaling pic is ready for data.
+'  5)  Now send out init dat to pic, all 5 bytes.
+'  6)  Now set direction and levels for the COMA and COMB pins.
+
+tempA      CON   c_p3_x <<1 + c_p4_x <<1 + c_p1_x <<1 + c_p2_x <<1 + c_rc_swB
+dataInitA   CON   tempA <<1 + c_rc_swA <<1 + c_oi_swB <<1 + c_oi_swA
+tempB      CON   c_sensor4 <<1 + c_sensor3 <<1 + c_p1_y <<1 + c_p2_y <<1 + c_sensor2
+dataInitB   CON   tempB <<1 + c_sensor1 <<1 + c_packet_num <<1 + c_PB_mode
+tempC      CON   c_batt_volt <<1 + c_sensor7 <<1 + c_p1_wheel <<1 + c_p2_wheel <<1 + c_sensor6
+dataInitC   CON   tempC <<1 + c_sensor5 <<1 + c_p3_y <<1 + c_p4_y
+tempD      CON   c_res01 <<1 + c_delta_t <<1 + c_p3_aux <<1 + c_p4_aux <<1 + c_p1_aux
+dataInitD   CON   tempD <<1 + c_p2_aux  <<1 + c_p3_wheel <<1 + c_p4_wheel
+
+OUTPUT      COMA
+LOW      COMA
+LOW      COMB
+INPUT      COMC
+
+Wait_init:   IF IN3 = 1 THEN Wait_init:
+SHIFTOUT   COMB,COMA,1, [dataInitA,dataInitB,dataInitC,dataInitD,dataInitVolt]
+INPUT      COMA
+HIGH      COMB
+
+OUTPUT      COMC
+LOW      COMC
+
+
+
+
+' initialize Scratchpad RAM variables
+PUT s_left_drive_cur, 127
+PUT s_right_drive_cur, 127
+
+
+
+
+'=============================================================================================================
+'========== MAIN LOOP ========================================================================================
+'=============================================================================================================
+
+MainLoop:
+
+
+'---------- Serin Command - Get Data from Master uP ----------------------------------------------------------
+'  Construct the "serin" command using the following rules:
+'  1) There must be one variable for every input defined in the "Define Constants for Init" section.
+'  2) The order must match the order in the EXAMPLE SERIN COMMAND below.
+'  3) The total number of all variables may not exceed 26.
+'  4) Only use one "Serin" command.
+'  5) The Serin command must occupy one line.
+'
+'  If you see a BASIC INIT ERR on the Robot Controller after programming and pressing RESET, then
+'  there is a problem with the Serin command below.  Check the number of variables.  A BASIC INIT ERR
+'  will not occur if you have the variables in the wrong order, however your code will not work correctly.
+'
+'  EXAMPLE SERIN COMMAND
+'  This example exceed the 26 variable limit and is not on one line:
+'
+'  Serin COMA\COMB, INBAUD, [oi_swA,oi_swB,rc_swA,rc_swB,p2_x,p1_x,p4_x,p3_x,PB_mode,packet_num,sensor1,
+'                            sensor2,p2_y,p1_y,sensor3,sensor4,p4_y,p3_y,sensor5,sensor6,p2_wheel,p1_wheel,
+'                            sensor7,sensor8,p4_wheel,p3_wheel,p2_aux,p1_aux,p4_aux,p3_aux,delta_t,res01]
+'
+   SERIN COMA\COMB, INBAUD, [oi_swA,oi_swB,rc_swA,rc_swB,p1_x,PB_mode,packet_num,p1_y,p1_wheel,p1_aux]
+
+
+'---------- Blink BASIC RUN LED ------------------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+TOGGLE 7         'Basic Run LED on the RC is toggled ON/OFF every loop.
+
+
+
+'=============================================================================================================
+'========== PERFORM OPERATIONS ===============================================================================
+'=============================================================================================================
+
+'DEBUG "P1 x ", DEC p1_x, " y ", DEC p1_y, " aux ", DEC p1_aux, " wheel ", DEC p1_wheel, " trig ", DEC p1_sw_trig, " top ", DEC p1_sw_top, " aux1 ", DEC p1_sw_aux1, CR
+
+'---------- Buttons to Relays---------------------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'   This maps the joystick buttons to specific relay outputs.  Relays 1 and 2
+'   use limit switches to stop the movement in one direction.
+'   The &  used below is the PBASIC symbol for AND
+'   The &~ used below is the PBASIC symbol for AND NOT
+
+   relay1_fwd = p1_sw_trig &~ rc_sw1    'Port 1 Trigger = Relay 1 Forward, unless rc_sw1 is ON
+   relay1_rev = p1_sw_top  &~ rc_sw2    'Port 1 Thumb   = Relay 1 Reverse, unless rc_sw2 is ON
+   relay2_fwd = p2_sw_trig &~ rc_sw3    'Port 2 Trigger = Relay 2 Forward, unless rc_sw3 is ON
+   relay2_rev = p2_sw_top  &~ rc_sw4    'Port 2 Thumb   = Relay 2 Reverse, unless rc_sw4 is ON
+
+   relay3_fwd = p3_sw_trig         'Port 3 Trigger = Relay 3 Forward
+   relay3_rev = p3_sw_top          'Port 3 Thumb   = Relay 3 Reverse
+   relay4_fwd = p4_sw_trig         'Port 4 Trigger = Relay 4 Forward
+   relay4_rev = p4_sw_top          'Port 4 Thumb   = Relay 4 Reverse
+
+   relay5_fwd = p1_sw_aux1         'Port 1 Aux1    = Relay 5 Forward
+   relay5_rev = p1_sw_aux2         'Port 1 Aux2    = Relay 5 Forward
+   relay6_fwd = p3_sw_aux1         'Port 3 Aux1    = Relay 6 Forward
+   relay6_rev = p3_sw_aux2         'Port 3 Aux2    = Relay 6 Forward
+   relay7_fwd = p4_sw_aux1         'Port 4 Aux1    = Relay 7 Forward
+   relay7_rev = p4_sw_aux2         'Port 4 Aux2    = Relay 7 Reverse
+
+   relay8_fwd = 1            'Relay 8        = Forward (turns the rotating light ON)
+   relay8_rev = 0            'Relay 8        = Forward
+
+
+'---------- PWM Feedback lights-------------------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+
+   ' display joystick calibrations
+   IF p1_wheel > 220 THEN
+     IF Oi_drive_x >= 127 + CALIBRATE_ZONE THEN
+       display_mode = DISPLAY_DRIVE_X
+     ELSE
+       IF Oi_drive_y >= 127 + CALIBRATE_ZONE THEN
+         display_mode = DISPLAY_DRIVE_Y
+       ENDIF
+     ENDIF
+
+     OUT8 = 0
+     OUT9 = 0
+     OUT10 = 0
+     OUT11 = 0
+     OUT12 = 0
+     OUT13 = 0
+     OUT14 = 0
+     OUT15 = 0
+
+     IF display_mode = DISPLAY_DRIVE_Y THEN
+       IF Oi_drive_y < (127 + 20) THEN
+         OUT9 = 1
+       ENDIF
+       IF Oi_drive_y < (127 + 5) THEN
+         OUT11 = 1
+       ENDIF
+       IF Oi_drive_y > (127 - 20) THEN
+         OUT14 = 1
+       ENDIF
+       IF Oi_drive_y > (127 - 5) THEN
+         OUT12 = 1
+       ENDIF
+       IF ((Oi_drive_y > (127 - 1)) AND (Oi_drive_y < (127 + 1))) THEN
+         OUT8 = 1
+         OUT10 = 1
+         OUT13 = 1
+         OUT15 = 1
+       ENDIF
+     ELSE
+       IF display_mode = DISPLAY_DRIVE_X THEN
+         IF Oi_drive_x < (127 + 20) THEN
+           OUT9 = 1
+         ENDIF
+         IF Oi_drive_x < (127 + 5) THEN
+           OUT11 = 1
+         ENDIF
+         IF Oi_drive_x > (127 - 20) THEN
+           OUT14 = 1
+         ENDIF
+         IF Oi_drive_x > (127 - 5) THEN
+           OUT12 = 1
+         ENDIF
+         IF ((Oi_drive_x > (127 - 1)) AND (Oi_drive_x < (127 + 1))) THEN
+           OUT8 = 1
+           OUT10 = 1
+           OUT13 = 1
+           OUT15 = 1
+         ENDIF
+       ENDIF
+     ENDIF
+
+     DEBUG CR
+   ENDIF
+
+
+
+   ' scale p1_x
+   tmp1 = Oi_drive_x
+   tmp2 = 254
+   tmp3 = 37
+   GOSUB ScaleJoystick
+   Oi_drive_x = tmp1
+
+   ' scale p1_y
+   tmp1 = Oi_drive_y
+   tmp2 = 254
+   tmp3 = 32
+   GOSUB ScaleJoystick
+   Oi_drive_y = tmp1
+
+
+
+'---------- 1 Joystick Drive ---------------------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------------------
+'   This code mixes the Y and X axis on Port 1 to allow one joystick drive.
+'   Joystick forward  = Robot forward
+'   Joystick backward = Robot forward
+'   Joystick right    = Robot rotates right
+'   Joystick left     = Robot rotates left
+'   Connect the left  drive motors to PWM15 and/or PWM16
+'   Connect the right drive motors to PWM13 and/or PWM14
+
+   IF (Oi_drive_y < 127+DRIVE_DEADZONE) AND (Oi_drive_y > 127-DRIVE_DEADZONE) THEN Oi_drive_y = 127
+   IF (Oi_drive_x < 127+DRIVE_DEADZONE) AND (Oi_drive_x > 127-DRIVE_DEADZONE) THEN Oi_drive_x = 127
+
+   drive_R = (((2000 + Oi_drive_y + Oi_drive_x - 127) MIN 2000 MAX 2254) - 2000)
+   drive_L = (((2000 + Oi_drive_y - Oi_drive_x + 127) MIN 2000 MAX 2254) - 2000)
+
+   ' shifter
+   IF ((Oi_sw_shifter = 1) AND (Oi_sw_shifter_prev = 0)) THEN
+      IF (shifter_pos = SHIFTER_LOW) THEN
+         shifter_pos = SHIFTER_HIGH
+      ELSE
+         shifter_pos = SHIFTER_LOW
+      ENDIF
+   ENDIF
+   Oi_sw_shifter_prev = Oi_sw_shifter
+
+   Rc_relay_shifter_left = shifter_pos
+   Rc_relay_shifter_right = shifter_pos
+
+   ' Anti-turbo
+   IF ((Oi_sw_turbo = 0) AND (shifter_pos = SHIFTER_HIGH)) THEN
+      drive_R = ((drive_R * DRIVE_SCL_65 / 100) + DRIVE_CON_65 MAX 254)
+      drive_L = ((drive_L * DRIVE_SCL_65 / 100) + DRIVE_CON_65 MAX 254)
+   ENDIF
+
+   tmp1 = drive_L
+   GET s_left_drive_cur, tmp2
+   GOSUB AccelRoutine
+   PUT s_left_drive_cur, tmp2
+   drive_L = tmp2
+
+   tmp1 = drive_R
+   GET s_right_drive_cur, tmp2
+   GOSUB AccelRoutine
+   PUT s_right_drive_cur, tmp2
+   drive_R = tmp2
+
+
+   'DEBUG "drive L ", DEC drive_L, " R ", DEC drive_R, " shifter ", DEC Rc_relay_shifter_left, CR
+
+
+
+
+   '---------- Run Pump ----------
+'   IF ((Dig_in_pressure = 0) OR (Oi_sw_run_pump = 1)) THEN
+   IF (Oi_sw_run_pump = 1) THEN
+     ' run pump
+     Rc_relay_pump = 1
+   ELSE
+     Rc_relay_pump = 0
+   ENDIF
+
+
+'=============================================================================================================
+'========== OUTPUT DATA ======================================================================================
+'=============================================================================================================
+'  The Serout line sends data to the Output uP.  The Output uP passes this to each PWM 1-16
+'  and Relay 1-8.  The Output uP will not output data if there is no communication with the
+'  Operator Interface or if the Competition Mode is Disabled.  Do not delete any elements
+'  from the Serout array.  Set unused PWM outputs to 127.  Set unused relay outputs to 0.
+'
+'  Serout USERCPU, OUTBAUD, [255,255,(PWM1),relayA,(PWM2),relayB,(PWM3),(PWM4),(PWM5),(PWM6),(PWM7),(PWM8),(PWM9),(PWM10),(PWM11),(PWM12),(PWM13),(PWM14),(PWM15),(PWM16)]
+
+   SEROUT USERCPU, OUTBAUD, [255,255,drive_R,relayA,drive_R,relayB,drive_L,drive_L,127,127,127,127,127,127,127,127,127,127,127,127]
+
+GOTO MainLoop:
+
+
+STOP
+
+
+
+ScaleJoystick:
+
+'DEBUG "in ", DEC tmp1
+IF (tmp1 > 127) THEN
+   tmp1 = 127 + ((((tmp1 - 127) * 127) / (tmp2 - 127)) MAX 127)
+ELSE
+   IF (tmp1 < 127) THEN
+      tmp1 = 127 - ((((127 - tmp1) * 127) / (127 - tmp3)) MAX 127)
+   ENDIF
+ENDIF
+'DEBUG " out ", DEC tmp1, CR
+
+RETURN 'from ScaleJoystick
+
+
+
+
+
+AccelRoutine:
+
+IF ((tmp2 >= (tmp1 - DRIVE_ACCEL_RATE)) AND (tmp2 <= (tmp1 + DRIVE_ACCEL_RATE))) THEN
+   'if current speed is close to target speed set it exactly to target speed
+   '(helps us come to a complete stop)
+   tmp2 = tmp1
+ELSE
+   IF (tmp2 < tmp1) THEN
+      'add to the current speed (velocity)
+      tmp2 = (tmp2 + DRIVE_ACCEL_RATE) MAX 254
+   ELSE
+      'subtract from the current speed
+      tmp2 = ((tmp2 MIN DRIVE_ACCEL_RATE) - DRIVE_ACCEL_RATE)
+   ENDIF
+ENDIF
+
+RETURN  'from AccelRoutine
+

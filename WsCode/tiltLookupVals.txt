@@ -1,0 +1,47 @@
+# Use this file to define cc/pot pairs to be entered
+# into the tilt lookup table
+# Lines have the format
+# CC POT #Optional comment
+
+
+#proto
+# POT BOTTOM = 408
+# POT TOP    = 343
+#42   359  # 18'
+#48   359  # 15'
+#55   359  # 12'
+#62   358  # 9'
+#74   360  # 6'
+#90   370  # 3'
+#100  370  # Corner of ramp
+#116  380  # Ramp
+
+# Milwaukee
+# POT BOTTOM = 265
+# POT TOP    = 202
+#69   216  # Far Start
+#71   216  # 15'
+#76   216  # 12'
+#87   217  # 9'
+#98   221  # 6'
+#113  228  # 3'
+#122  230  # Corner of ramp (Calibrated at 231, but it was high)
+#141   243  # RAMP
+
+# 79  214
+# 89  222
+# 113 240
+
+# Milwaukee
+# POT BOTTOM = 265
+# POT TOP    = 201
+69   214  # Far Start
+71   214  # 15'
+76   214  # 12'
+79   214  # 9'
+88   225  # 6'
+105  232  # 3'
+108  238  # Corner of ramp
+134  248  # RAMP
+
+
